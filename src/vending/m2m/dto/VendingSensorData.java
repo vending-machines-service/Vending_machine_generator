@@ -4,6 +4,8 @@ public class VendingSensorData {
 
 	public int machineId;
 	public int sensorId;
+	public int value;
+	
 	public int getMachineId() {
 		return machineId;
 	}
@@ -16,8 +18,6 @@ public class VendingSensorData {
 		return value;
 	}
 
-	public int value;
-	
 	public VendingSensorData(int machineId, int sensorId, int value) {
 		super();
 		this.machineId = machineId;
