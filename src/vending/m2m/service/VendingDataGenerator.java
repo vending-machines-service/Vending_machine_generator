@@ -21,23 +21,39 @@ public class VendingDataGenerator {
 	Random random = new Random();
 	@Value("${min_value:0}")
 	int minValue;
-	@Value("${max_value:1}")
+	@Value("${max_value:5}")
 	int maxValue;
 	int machineId = 1;
 	int value = 100;
-	int nSensors = 18;
+	int coins = 0;
+	int cash = 0;
+	int nSensors = 0;
 	@InboundChannelAdapter(value = Source.OUTPUT,
 			poller = @Poller(
 					fixedDelay = "${fixedDelay:6000}",
 					maxMessagesPerPoll = "${nMessages:18}"))
 	String getSensorData() throws JsonProcessingException {
-
+		VendingSensorData sensor = null;
 		int number = getRandomNumber(minValue, maxValue);
 		if (number == 1 && value>0) {
 			value -= 10;
-			
 		}
-		VendingSensorData sensor = getSensor(machineId, getRandomNumber(1, nSensors), value);
+		nSensors += 1;
+		if(nSensors<17) {
+			sensor = getSensor(machineId, nSensors, value);
+		}
+		if(nSensors == 17) {
+			coins = (100 - value)/10 * 3;
+			sensor = getSensor(machineId, nSensors, coins);
+		}
+		else if (nSensors == 18) {
+			cash = coins/2;
+			sensor = getSensor(machineId, nSensors, cash);
+		}
+		if(nSensors > 18) {
+			nSensors = 0;
+		}
+		
 		return mapper.writeValueAsString(sensor);
 	}
 	private VendingSensorData getSensor(int machineId,int nSensors,int value) {
