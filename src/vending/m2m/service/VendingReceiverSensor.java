@@ -15,7 +15,7 @@ import vending.m2m.dto.VendingSensorData;
 @EnableBinding(Sink.class)
 public class VendingReceiverSensor {
 
-	private static final long TIME_DELAY = 100;
+	private static final long TIME_DELAY = 1;
 	ObjectMapper mapper = new ObjectMapper();
 	int n = 1;
 	
