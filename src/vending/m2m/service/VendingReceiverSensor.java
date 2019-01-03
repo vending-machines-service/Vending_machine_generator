@@ -10,7 +10,7 @@ import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import vending.m2m.dto.VendingSensorData;
+import vending.m2m.dto.SensorDTO;
 
 @EnableBinding(Sink.class)
 public class VendingReceiverSensor {
@@ -21,7 +21,7 @@ public class VendingReceiverSensor {
 	
 	@StreamListener(Sink.INPUT)
 	void receiveSensorData(String jsonData) throws JsonParseException, JsonMappingException, IOException, InterruptedException {
-		VendingSensorData sensor = mapper.readValue(jsonData, VendingSensorData.class);
+		SensorDTO sensor = mapper.readValue(jsonData, SensorDTO.class);
 		System.out.printf("#%d, machineId=%d, sensorId=%d, value=%d\n", n++, sensor.machineId, sensor.sensorId, sensor.value);
 		Thread.sleep(TIME_DELAY);
 	}

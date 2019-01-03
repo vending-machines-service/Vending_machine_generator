@@ -10,7 +10,7 @@ import org.springframework.integration.annotation.Poller;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import vending.m2m.dto.VendingSensorData;
+import vending.m2m.dto.SensorDTO;
 
 @EnableBinding(Source.class)
 public class VendingDataGenerator {
@@ -40,7 +40,7 @@ public class VendingDataGenerator {
 		if (sale && productValue[nProductSensor] < 100) {
 			productValue[nProductSensor] += 10;
 		}
-		VendingSensorData sensor = new VendingSensorData(machineId, nProductSensor, 100 - productValue[nProductSensor]);
+		SensorDTO sensor = new SensorDTO(machineId, nProductSensor, 100 - productValue[nProductSensor]);
 		nProductSensor++;
 		if (nProductSensor >= N_PRODUCT_SENSORS) {
 			nProductSensor = 0;
@@ -55,7 +55,7 @@ public class VendingDataGenerator {
 		int cashPerStep = moneyPerStep - coinsPerStep;
 		money[0] += coinsPerStep;
 		money[1] += cashPerStep;
-		VendingSensorData sensor = new VendingSensorData(machineId, nMoneySensor + MONEY_SENSOR_INDEX, money[nMoneySensor]);
+		SensorDTO sensor = new SensorDTO(machineId, nMoneySensor + MONEY_SENSOR_INDEX, money[nMoneySensor]);
 		nMoneySensor++;
 		if (nMoneySensor >= N_MONEY_SENSORS) {
 			nMoneySensor = 0;
@@ -68,7 +68,7 @@ public class VendingDataGenerator {
 		if(crashBoolean[nCrashSensor] == 0) {
 			crashBoolean[nCrashSensor] = getRandomNumber(1, 100 / CRASH_PROBABILITY) == 1 ? 1 : 0;
 		}
-		VendingSensorData sensor = new VendingSensorData(machineId, nCrashSensor + CRASH_SENSOR_INDEX, crashBoolean[nCrashSensor]);
+		SensorDTO sensor = new SensorDTO(machineId, nCrashSensor + CRASH_SENSOR_INDEX, crashBoolean[nCrashSensor]);
 		nCrashSensor ++;
 		if (nCrashSensor >= N_CRASH_SENSORS) {
 			nCrashSensor = 0;
