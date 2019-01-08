@@ -70,7 +70,7 @@ public class EmulatorService implements IEmulator {
   }
 
   private void stopEmulation(MachineEmulator emulator) {
-    emulator.interrupt();
+    emulator.interrupt();;
     this.log.info("EMULATOR OF MACHINE ID={} STOPPED", emulator.getMachineId());
   }
 
