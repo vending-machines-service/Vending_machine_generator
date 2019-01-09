@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import vms.vmsmachineemulator.configuration.EmulatorParams;
+import vms.vmsmachineemulator.configuration.SensorParams;
 import vms.vmsmachineemulator.dto.MachineDTO;
 import vms.vmsmachineemulator.dto.SensorDTO;
 import vms.vmsmachineemulator.dto.SensorTypeEnum;
@@ -23,18 +24,16 @@ import vms.vmsmachineemulator.entity.MachineProductSensorJPA;
 import vms.vmsmachineemulator.repo.MachinesSqlRepository;
 import vms.vmsmachineemulator.service.interfaces.IMachines;
 
-@ConfigurationProperties("vms.sensorCount")
+
 @Service
 public class MachinesRestProxy implements IMachines {
 
 	@Autowired
 	private EmulatorParams params;
 	@Autowired
+	private SensorParams sensorParams;
+	@Autowired
 	MachinesSqlRepository SQLRepo;
-
-	private int incSensorCount;
-	private int decSensorCount;
-	private int crashSensorCount;
 
 	@Override
 	public List<MachineDTO> getMachines() {
@@ -50,8 +49,8 @@ public class MachinesRestProxy implements IMachines {
 	private List<MachineDTO> getMachines(List<StartMachineDTO> startMachines) {
 		List<MachineDTO> machines = new ArrayList<MachineDTO>();
 		for (int i = 0; i < startMachines.size(); i++) {
-			MachineDTO machine = createMachine(startMachines.get(i).machineId, incSensorCount, decSensorCount,
-					crashSensorCount);
+			MachineDTO machine = createMachine(startMachines.get(i).machineId, sensorParams.getIncSensorCount(), sensorParams.getDecSensorCount(),
+					sensorParams.getCrashSensorCount());
 			machines.add(machine);
 		}
 		return machines;
