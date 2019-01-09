@@ -49,7 +49,7 @@ public class MachinesRestProxy implements IMachines {
 	private List<MachineDTO> getMachines(List<StartMachineDTO> startMachines) {
 		List<MachineDTO> machines = new ArrayList<MachineDTO>();
 		for (int i = 0; i < startMachines.size(); i++) {
-			MachineDTO machine = createMachine(startMachines.get(i).machineId, sensorParams.getIncSensorCount(), sensorParams.getDecSensorCount(),
+			MachineDTO machine = createMachine(startMachines.get(i).machineId, startMachines.get(i).productSensor.size(), sensorParams.getDecSensorCount(),
 					sensorParams.getCrashSensorCount());
 			machines.add(machine);
 		}
