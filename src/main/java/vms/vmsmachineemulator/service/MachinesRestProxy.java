@@ -25,7 +25,7 @@ import vms.vmsmachineemulator.repo.MachinesSqlRepository;
 import vms.vmsmachineemulator.service.interfaces.IMachines;
 
 
-@Service
+//@Service
 public class MachinesRestProxy implements IMachines {
 
 	@Autowired

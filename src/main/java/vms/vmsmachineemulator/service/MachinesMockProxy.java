@@ -12,7 +12,7 @@ import vms.vmsmachineemulator.dto.SensorDTO;
 import vms.vmsmachineemulator.dto.SensorTypeEnum;
 import vms.vmsmachineemulator.service.interfaces.IMachines;
 
-//@Service
+@Service
 public class MachinesMockProxy implements IMachines {
 
 	@Autowired

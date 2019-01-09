@@ -3,6 +3,9 @@ package vms.vmsmachineemulator.service;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import javax.annotation.PostConstruct;
+
 import org.apache.logging.slf4j.SLF4JLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -27,7 +30,7 @@ public class EmulatorService implements IEmulator {
   public EmulatorService() {
     this.machineEmulators = new HashMap<Integer, MachineEmulator>();
   }
-
+  
   @Override
   public boolean startTest() {
     this.prepareMachineEmulators();
