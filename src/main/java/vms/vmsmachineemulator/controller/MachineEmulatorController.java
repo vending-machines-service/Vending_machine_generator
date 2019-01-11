@@ -24,7 +24,7 @@ public class MachineEmulatorController {
 
   @GetMapping("/complete/{machineId}")
   boolean restoreMachine(@PathVariable("machineId") int machineId) {
-    return false;
+    return this.emulator.resetMachine(machineId);
   }
 
   @GetMapping("/reset-machine/{machineId}")

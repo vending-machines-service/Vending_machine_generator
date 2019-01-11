@@ -34,6 +34,18 @@ public class SensorsService implements ISensors {
     }
   }
 
+  public int getDefaultSensorValue(SensorTypeEnum type) {
+    if (type == SensorTypeEnum.CRASH) {
+      return 0;
+    } else if (type == SensorTypeEnum.DECREASE) {
+      return this.params.getMaxValue();
+    } else if (type == SensorTypeEnum.INCREASE) {
+      return this.params.getMinValue();
+    } else {
+      return -1;
+    }
+  }
+
   public void calculateNextValue(SensorStorage sensorStorage) {
     if (sensorStorage.getType() == SensorTypeEnum.INCREASE) {
       this.calculateIncSensorNextValue(sensorStorage);

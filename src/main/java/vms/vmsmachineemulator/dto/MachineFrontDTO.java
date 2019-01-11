@@ -1,5 +1,7 @@
 package vms.vmsmachineemulator.dto;
 
+import java.util.Map;
+
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -11,12 +13,9 @@ import lombok.ToString;
 @NoArgsConstructor
 @ToString
 @EqualsAndHashCode
-public class SensorStorage {
-  private SensorDTO sensor;
-  private SensorTypeEnum type;
+public class MachineFrontDTO {
 
-  public SensorStorage(SensorDTO sensor, SensorTypeEnum type) {
-    this.sensor = sensor;
-    this.type = type;
-  }
+  private int machineId;
+  private Map<Integer, Integer> productSensor;
+
 }

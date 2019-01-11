@@ -2,7 +2,6 @@ package vms.vmsmachineemulator.service;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -36,9 +35,10 @@ public class MachineEmulator extends Thread implements IMachineEmulator {
   ISensors sensorsService;
   IDispatcher dispatcher;
   ObjectMapper mapper = new ObjectMapper();
+  private boolean isEmulationContinues = true;
   private int machineId;
   private Set<SensorStorage> sensors;
-  
+
   public MachineEmulator(MachineDTO machine, ApplicationContext appContext) {
     this.applicationContext = appContext;
     this.sensorsService = this.applicationContext.getBean(ISensors.class);
@@ -46,18 +46,11 @@ public class MachineEmulator extends Thread implements IMachineEmulator {
     this.params = this.applicationContext.getBean(EmulatorParams.class);
     this.sensors = new HashSet<SensorStorage>();
     machine.getSensors().forEach(this::addSensor);
-    setDaemon(true);
-  }
-
-  private void addSensor(SensorDTO sensor) {
-    SensorTypeEnum type = this.sensorsService.getSensorType(sensor.getSensorId());
-    SensorStorage sensorStorage = new SensorStorage(sensor, type);
-    this.sensors.add(sensorStorage);
   }
 
   @Override
   public void run() {
-    while(true) {
+    while (true && this.isEmulationContinues) {
       this.emitStepSensorData();
       try {
         sleep(this.params.getSendInterval());
@@ -73,26 +66,60 @@ public class MachineEmulator extends Thread implements IMachineEmulator {
     this.sensors.forEach(this::emitAndCalculateNext);
   }
 
+  @Override
+  public boolean reset() {
+    this.sensors.forEach(this::resetSensor);
+    return false;
+  }
+
+  public void stopEmulator() {
+    this.isEmulationContinues = false;
+  }
+  /**
+   * Wraps sensor data into SensorStorage object with sensor type;
+   * 
+   * @param sensor
+   */
+  private void addSensor(SensorDTO sensor) {
+    SensorTypeEnum type = this.sensorsService.getSensorType(sensor.getSensorId());
+    SensorStorage sensorStorage = new SensorStorage(sensor, type);
+    this.sensors.add(sensorStorage);
+  }
+
+  /**
+   * Emits given sensor data into Kafka and calculates next sensor value;
+   * 
+   * @param sensor
+   */
   private void emitAndCalculateNext(SensorStorage sensor) {
     this.sendData(sensor);
     this.sensorsService.calculateNextValue(sensor);
   }
 
+  /**
+   * Sends sensor data into sensors kafka chennel; If sensor value equals -1(which
+   * means that sensor is not responding) does not do anything;
+   */
   void sendData(SensorStorage sensor) {
+    if (sensor.getSensor().getValue() == -1) {
+      return;
+    }
     try {
       String message = this.mapper.writeValueAsString(sensor.getSensor());
-      this.dispatcher.sendSensorData()
-        .send(MessageBuilder.withPayload(message)
-        .build());
-      log.info("=> MACHINE {}; SENSOR {}; VALUE {} SENT", sensor.getSensor().getMachineId(), sensor.getSensor().getSensorId(), sensor.getSensor().getValue());
+      this.dispatcher.sendSensorData().send(MessageBuilder.withPayload(message).build());
+      log.info("=> MACHINE {}; SENSOR {}; VALUE {} SENT", sensor.getSensor().getMachineId(),
+          sensor.getSensor().getSensorId(), sensor.getSensor().getValue());
     } catch (JsonProcessingException e) {
       log.error("Json Processing Exception in machine: {}", this.machineId);
     }
   }
-
-  @Override
-  public boolean reset() {
-    // TODO
-    return false;
+  /**
+   * Set default value into given sensor object, calculated by sensor type;
+   * @param sensorStorage
+   */
+  private void resetSensor(SensorStorage sensorStorage) {
+    SensorDTO sensor = sensorStorage.getSensor();
+    int value = this.sensorsService.getDefaultSensorValue(sensorStorage.getType());
+    sensor.setValue(value);
   }
 }

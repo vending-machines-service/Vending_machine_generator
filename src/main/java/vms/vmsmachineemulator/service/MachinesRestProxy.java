@@ -1,110 +1,133 @@
 package vms.vmsmachineemulator.service;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import vms.vmsmachineemulator.configuration.EmulatorParams;
+import vms.vmsmachineemulator.configuration.ApiParams;
+import vms.vmsmachineemulator.configuration.SensorsParams;
 import vms.vmsmachineemulator.dto.MachineDTO;
+import vms.vmsmachineemulator.dto.MachineFrontDTO;
 import vms.vmsmachineemulator.dto.SensorDTO;
 import vms.vmsmachineemulator.dto.SensorTypeEnum;
-import vms.vmsmachineemulator.dto.StartMachineDTO;
-import vms.vmsmachineemulator.entity.MachineJPA;
-import vms.vmsmachineemulator.entity.MachineProductSensorJPA;
-import vms.vmsmachineemulator.repo.MachinesSqlRepository;
+import vms.vmsmachineemulator.repo.StateMongoRepository;
 import vms.vmsmachineemulator.service.interfaces.IMachines;
+import vms.vmsmachineemulator.service.interfaces.ISensors;
+import vms.vmsmachineemulator.util.UtilService;
 
-@ConfigurationProperties("vms.sensorCount")
 @Service
 public class MachinesRestProxy implements IMachines {
+  private RestTemplate rest = new RestTemplate();
+  @Autowired
+  StateMongoRepository stateRepo;
+  @Autowired
+  ISensors sensorService;
+  @Autowired
+  SensorsParams sensorsParams;
+  @Autowired
+  ApiParams apiParams;
 
-	@Autowired
-	private EmulatorParams params;
-	@Autowired
-	MachinesSqlRepository SQLRepo;
+  @Override
+  public List<MachineDTO> getMachines() {
+    List<MachineFrontDTO> machines = this.getMachinesFront();
+    List<MachineDTO> machinesDTO = this.getMachineSensorValues(machines);
+    return machinesDTO;
 
-	private int incSensorCount;
-	private int decSensorCount;
-	private int crashSensorCount;
+  }
 
-	@Override
-	public List<MachineDTO> getMachines() {
-		List<StartMachineDTO> startMachines = getStartMachineDTO();
-		return getMachines(startMachines);
-	}
+  /**
+   * Converts collection of machines data, received from frontend server to
+   * MachineDTO;
+   * 
+   * @param machinesFront
+   * @return
+   */
+  private List<MachineDTO> getMachineSensorValues(List<MachineFrontDTO> machinesFront) {
+    return machinesFront.stream().map(this::getMachinesDTOWithSensorsValue).collect(Collectors.toList());
+  }
 
-	private List<StartMachineDTO> getStartMachineDTO() {
-		return SQLRepo.findAll().stream().map(mach -> convertJPAtoDTO(mach)).collect(Collectors.toList());
+  /**
+   * Converts machine data, received from frontend to the MachineDTO, sets proper
+   * sensor value; If state of given machine does not exists returns MachineDTO
+   * with default sensor values;
+   */
+  private MachineDTO getMachinesDTOWithSensorsValue(MachineFrontDTO machine) {
+    MachineDTO machineState = this.stateRepo.findById(machine.getMachineId()).orElse(null);
+    if (machineState == null) {
+      return this.getDefaultMachineState(machine);
+    }
+    List<SensorDTO> sensors = machineState.getSensors().stream()
+        .filter(
+            stateSensor -> isStateSensorExistsInMachine(machine.getProductSensor().keySet(), stateSensor.getSensorId()))
+        .collect(Collectors.toList());
+    return new MachineDTO(machine.getMachineId(), sensors);
+  }
 
-	}
+  /**
+   * Checks that given sensorId exists between registered machine sensors;
+   * 
+   * @param sensorIds
+   * @param sensorId
+   * @return
+   */
+  private boolean isStateSensorExistsInMachine(Set<Integer> productsIds, Integer sensorId) {
+    Set<Integer> nonProductsIds = this.sensorsParams.getSensorsDesc().stream()
+    .map(desc -> desc.getSensorId())
+    .collect(Collectors.toSet());
+    Set<Integer> sensorsIds = UtilService.mergeSets(productsIds, nonProductsIds);
+    return sensorsIds.contains(sensorId);
+  }
 
-	private List<MachineDTO> getMachines(List<StartMachineDTO> startMachines) {
-		List<MachineDTO> machines = new ArrayList<MachineDTO>();
-		for (int i = 0; i < startMachines.size(); i++) {
-			MachineDTO machine = createMachine(startMachines.get(i).machineId, incSensorCount, decSensorCount,
-					crashSensorCount);
-			machines.add(machine);
-		}
-		return machines;
-	}
+  /**
+   * Returns new MachineDTO with MachineFrontDTO data, and default values on
+   * registered sensors;
+   * 
+   * @param machine
+   * @return
+   */
+  private MachineDTO getDefaultMachineState(MachineFrontDTO machine) {
+    List<SensorDTO> sensorsProducts = machine.getProductSensor().keySet().stream()
+        .map(sensorId -> getSensorDTOWIthDefaultValue(machine.getMachineId(), sensorId)).collect(Collectors.toList());
+    List<SensorDTO> sensorsNonProducts = this.getNonProductsSensors(machine.getMachineId());
+    List<SensorDTO> sensors = UtilService.mergeLists(sensorsProducts, sensorsNonProducts);
+    return new MachineDTO(machine.getMachineId(), sensors);
+  }
 
-	public MachineDTO createMachine(int machineId, int incSensorCount, int decSensorCount, int crashSensorCount) {
-		List<SensorDTO> sensors = new ArrayList<SensorDTO>();
-		addIncreaseSensors(sensors, incSensorCount, machineId);
-		addDecreaseSensors(sensors, decSensorCount, machineId);
-		addCrashSensors(sensors, crashSensorCount, machineId);
-		return new MachineDTO(machineId, sensors);
-	}
+  /**
+   * Returns list of non product sensors with default values;
+   * 
+   * @param machineId
+   * @return
+   */
+  List<SensorDTO> getNonProductsSensors(int machineId) {
+    return this.sensorsParams.getSensorsDesc().stream().map(sensorDesc -> {
+      int sensorId = sensorDesc.getSensorId();
+      return this.getSensorDTOWIthDefaultValue(machineId, sensorId);
+    }).collect(Collectors.toList());
+  }
 
-	public void addIncreaseSensors(List<SensorDTO> sensors, int sensorCount, int machineId) {
-		int beginIndex = this.params.getSensorRanges().get(SensorTypeEnum.INCREASE.toString()).getFrom();
-		int endIndex = beginIndex + sensorCount;
-		int maxIndex = this.params.getSensorRanges().get(SensorTypeEnum.INCREASE.toString()).getTo();
-		for (int i = beginIndex; i < endIndex && i < maxIndex; i++) {
-			SensorDTO sensor = new SensorDTO(machineId, i, 0);
-			sensors.add(sensor);
-		}
-	}
+  /**
+   * Returns new SensorDTO with given machineId, sensorId and default value,
+   * calculated by given sensor id;
+   */
+  private SensorDTO getSensorDTOWIthDefaultValue(Integer machineId, Integer sensorId) {
+    SensorTypeEnum sensorType = this.sensorService.getSensorType(sensorId);
+    int sensorValue = this.sensorService.getDefaultSensorValue(sensorType);
+    return new SensorDTO(machineId, sensorId, sensorValue);
+  }
 
-	public void addDecreaseSensors(List<SensorDTO> sensors, int sensorCount, int machineId) {
-		int beginIndex = this.params.getSensorRanges().get(SensorTypeEnum.DECREASE.toString()).getFrom();
-		int endIndex = beginIndex + sensorCount;
-		int maxIndex = this.params.getSensorRanges().get(SensorTypeEnum.DECREASE.toString()).getTo();
-		for (int i = beginIndex; i < endIndex && i < maxIndex; i++) {
-			SensorDTO sensor = new SensorDTO(machineId, i, this.params.getMaxValue());
-			sensors.add(sensor);
-		}
-	}
-
-	public void addCrashSensors(List<SensorDTO> sensors, int sensorCount, int machineId) {
-		int beginIndex = this.params.getSensorRanges().get(SensorTypeEnum.CRASH.toString()).getFrom();
-		int endIndex = beginIndex + sensorCount;
-		int maxIndex = this.params.getSensorRanges().get(SensorTypeEnum.CRASH.toString()).getTo();
-		for (int i = beginIndex; i < endIndex && i < maxIndex; i++) {
-			SensorDTO sensor = new SensorDTO(machineId, i, 0);
-			sensors.add(sensor);
-		}
-	}
-
-	private StartMachineDTO convertJPAtoDTO(MachineJPA machineJpa) {
-
-		int machineId = machineJpa.machineId;
-		String firmName = machineJpa.firmName;
-		String location = machineJpa.location;
-		Map<Integer, Integer> productSensor = new HashMap<>();
-		for (MachineProductSensorJPA set : machineJpa.getProducts()) {
-			productSensor.put(set.getSensorId(), set.getProductId());
-		}
-
-		return new StartMachineDTO(machineId, firmName, location, productSensor);
-	}
+  private List<MachineFrontDTO> getMachinesFront() {
+    String reqURL = this.apiParams.getRoot() + "/util/machine/all";
+    ResponseEntity<List<MachineFrontDTO>> response = rest.exchange(reqURL, HttpMethod.GET, null,
+        new ParameterizedTypeReference<List<MachineFrontDTO>>() {
+        });
+    return response.getBody();
+  }
 }

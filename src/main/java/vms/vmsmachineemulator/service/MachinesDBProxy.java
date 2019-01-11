@@ -1,32 +1,52 @@
 package vms.vmsmachineemulator.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import vms.vmsmachineemulator.configuration.EmulatorParams;
 import vms.vmsmachineemulator.dto.MachineDTO;
 import vms.vmsmachineemulator.dto.SensorDTO;
 import vms.vmsmachineemulator.dto.SensorTypeEnum;
+import vms.vmsmachineemulator.dto.StartMachineDTO;
+import vms.vmsmachineemulator.entity.MachineJPA;
+import vms.vmsmachineemulator.entity.MachineProductSensorJPA;
+import vms.vmsmachineemulator.repo.MachinesSqlRepository;
 import vms.vmsmachineemulator.service.interfaces.IMachines;
 
-//@Service
-public class MachinesMockProxy implements IMachines {
+@ConfigurationProperties("vms")
+// @Service
+public class MachinesDBProxy implements IMachines {
 
 	@Autowired
 	private EmulatorParams params;
+	@Autowired
+	MachinesSqlRepository SQLRepo;
+
+	private int incSensorCount;
+	private int decSensorCount;
+	private int crashSensorCount;
 
 	@Override
 	public List<MachineDTO> getMachines() {
-		return getMachines(1, 1, 1, 1);
+		List<StartMachineDTO> startMachines = getStartMachineDTO();
+		return getMachines(startMachines);
 	}
 
-	public List<MachineDTO> getMachines(int machinesCount, int incSensorCount, int decSensorCount,
-			int crashSensorCount) {
+	private List<StartMachineDTO> getStartMachineDTO() {
+		return SQLRepo.findAll().stream().map(mach -> convertJPAtoDTO(mach)).collect(Collectors.toList());
+	}
+
+	private List<MachineDTO> getMachines(List<StartMachineDTO> startMachines) {
 		List<MachineDTO> machines = new ArrayList<MachineDTO>();
-		for (int i = 0; i < machinesCount; i++) {
-			MachineDTO machine = createMachine(i, incSensorCount, decSensorCount, crashSensorCount);
+		for (int i = 0; i < startMachines.size(); i++) {
+			MachineDTO machine = createMachine(startMachines.get(i).machineId, incSensorCount, decSensorCount,
+					crashSensorCount);
 			machines.add(machine);
 		}
 		return machines;
@@ -68,5 +88,18 @@ public class MachinesMockProxy implements IMachines {
 			SensorDTO sensor = new SensorDTO(machineId, i, 0);
 			sensors.add(sensor);
 		}
+	}
+
+	private StartMachineDTO convertJPAtoDTO(MachineJPA machineJpa) {
+
+		int machineId = machineJpa.machineId;
+		String firmName = machineJpa.firmName;
+		String location = machineJpa.location;
+		Map<Integer, Integer> productSensor = new HashMap<>();
+		for (MachineProductSensorJPA set : machineJpa.getProducts()) {
+			productSensor.put(set.getSensorId(), set.getProductId());
+		}
+
+		return new StartMachineDTO(machineId, firmName, location, productSensor);
 	}
 }

@@ -12,11 +12,11 @@ import lombok.ToString;
 @ToString
 @EqualsAndHashCode
 public class SensorDTO {
-  int machineId;
-  int sensorId;
-  int value;
+  Integer machineId;
+  Integer sensorId;
+  Integer value;
 
-  public SensorDTO(int machineId, int sensorId, int value) {
+  public SensorDTO(Integer machineId, Integer sensorId, Integer value) {
     this.machineId = machineId;
     this.sensorId = sensorId;
     this.value = value;

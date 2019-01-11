@@ -54,9 +54,12 @@ public class EmulatorService implements IEmulator {
     emulator.reset();
     return true;
   }
-
-  @Override
-  public boolean prepareMachineEmulators() {
+  /**
+   * Requests for machine data with machine sensor values;
+   * Creates emulator for each machine;
+   * @return
+   */
+  private boolean prepareMachineEmulators() {
     List<MachineDTO> machines = this.machinesService.getMachines();
     if (machines.size() == 0)
       return false;
@@ -70,10 +73,13 @@ public class EmulatorService implements IEmulator {
   }
 
   private void stopEmulation(MachineEmulator emulator) {
-    emulator.interrupt();;
+    emulator.stopEmulator();
     this.log.info("EMULATOR OF MACHINE ID={} STOPPED", emulator.getMachineId());
   }
-
+  /**
+   * Creates new machine emulator with given machine initial data;
+   * @param machine
+   */
   private void addMachineEmulator(MachineDTO machine) {
     MachineEmulator emulator = new MachineEmulator(machine, this.applicationContext);
     this.machineEmulators.put(machine.getMachineId(), emulator);
