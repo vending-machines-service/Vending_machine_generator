@@ -72,9 +72,11 @@ public class MachineEmulator extends Thread implements IMachineEmulator {
     return false;
   }
 
+  @Override
   public void stopEmulator() {
     this.isEmulationContinues = false;
   }
+
   /**
    * Wraps sensor data into SensorStorage object with sensor type;
    * 
@@ -113,8 +115,10 @@ public class MachineEmulator extends Thread implements IMachineEmulator {
       log.error("Json Processing Exception in machine: {}", this.machineId);
     }
   }
+
   /**
    * Set default value into given sensor object, calculated by sensor type;
+   * 
    * @param sensorStorage
    */
   private void resetSensor(SensorStorage sensorStorage) {
