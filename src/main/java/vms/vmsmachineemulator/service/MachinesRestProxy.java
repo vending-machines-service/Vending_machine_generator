@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,8 +25,7 @@ import vms.vmsmachineemulator.entity.MachineProductSensorJPA;
 import vms.vmsmachineemulator.repo.MachinesSqlRepository;
 import vms.vmsmachineemulator.service.interfaces.IMachines;
 
-
-//@Service
+@Service
 public class MachinesRestProxy implements IMachines {
 
 	@Autowired
@@ -35,9 +35,11 @@ public class MachinesRestProxy implements IMachines {
 	@Autowired
 	MachinesSqlRepository SQLRepo;
 
+	static List<StartMachineDTO> startMachines;
+
 	@Override
 	public List<MachineDTO> getMachines() {
-		List<StartMachineDTO> startMachines = getStartMachineDTO();
+		startMachines = getStartMachineDTO();
 		return getMachines(startMachines);
 	}
 
@@ -49,8 +51,8 @@ public class MachinesRestProxy implements IMachines {
 	private List<MachineDTO> getMachines(List<StartMachineDTO> startMachines) {
 		List<MachineDTO> machines = new ArrayList<MachineDTO>();
 		for (int i = 0; i < startMachines.size(); i++) {
-			MachineDTO machine = createMachine(startMachines.get(i).machineId, startMachines.get(i).productSensor.size(), sensorParams.getDecSensorCount(),
-					sensorParams.getCrashSensorCount());
+			MachineDTO machine = createMachine(startMachines.get(i).machineId, sensorParams.getIncSensorCount(),
+					startMachines.get(i).productSensor.size(), sensorParams.getCrashSensorCount());
 			machines.add(machine);
 		}
 		return machines;
@@ -75,11 +77,14 @@ public class MachinesRestProxy implements IMachines {
 	}
 
 	public void addDecreaseSensors(List<SensorDTO> sensors, int sensorCount, int machineId) {
+		List<Integer> startSensorsId = startMachines.stream().filter(x -> x.machineId == machineId)
+				.map(y -> y.productSensor).findFirst().get().keySet().stream().collect(Collectors.toList());
 		int beginIndex = this.params.getSensorRanges().get(SensorTypeEnum.DECREASE.toString()).getFrom();
 		int endIndex = beginIndex + sensorCount;
 		int maxIndex = this.params.getSensorRanges().get(SensorTypeEnum.DECREASE.toString()).getTo();
 		for (int i = beginIndex; i < endIndex && i < maxIndex; i++) {
-			SensorDTO sensor = new SensorDTO(machineId, i, this.params.getMaxValue());
+			SensorDTO sensor = new SensorDTO(machineId, startSensorsId.get(i - beginIndex) + beginIndex,
+					this.params.getMaxValue());
 			sensors.add(sensor);
 		}
 	}

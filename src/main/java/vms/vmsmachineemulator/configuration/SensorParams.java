@@ -21,6 +21,5 @@ import lombok.ToString;
 public class SensorParams {
 
 	private int incSensorCount;
-	private int decSensorCount;
 	private int crashSensorCount;
 }
